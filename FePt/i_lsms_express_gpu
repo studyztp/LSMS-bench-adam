@@ -3,6 +3,7 @@ system_title = "Iron-Platinum test for LSMS 3"
 pot_in_type=1
 -- write potential out. Use this only when xRepeat, yRepeat and zRepeat = 1
 pot_out_type=0
+-- can try
 num_atoms=2
 nspin=3
 mtasa=0
@@ -13,6 +14,7 @@ print_node=0
 -- istop="buildKKRMatrix"
 istop="main"
 
+-- can try; iteration
 nscf=2
 
 xRepeat=1
@@ -32,10 +34,11 @@ bravais[1]={a,0,0}
 bravais[2]={0,a,0}
 bravais[3]={0,0,c}
 
-site_default={lmax=5,rLIZ=18,rsteps={89.5,91.5,93.2,99.9},atom="Fe",Z=26,Zc=10,Zs=8,Zv=8,rad=2}
+-- can try; gpu memory
+-- site_default={lmax=5,rLIZ=18,rsteps={89.5,91.5,93.2,99.9},atom="Fe",Z=26,Zc=10,Zs=8,Zv=8,rad=2}
 -- site_default={lmax=3,rLIZ=8.5,rsteps={89.5,91.5,93.2,99.9},atom="Fe",Z=26,Zc=10,Zs=8,Zv=8,rad=2}
 -- site_default={lmax=3,rLIZ=5.0,rsteps={89.5,91.5,93.2,99.9},atom="Fe",Z=26,Zc=10,Zs=8,Zv=8,rad=2}
--- site_default={lmax=3,rLIZ=0.1,rsteps={89.5,91.5,93.2,99.9},atom="Fe",Z=26,Zc=10,Zs=8,Zv=8,rad=2}
+site_default={lmax=3,rLIZ=0.1,rsteps={89.5,91.5,93.2,99.9},atom="Fe",Z=26,Zc=10,Zs=8,Zv=8,rad=2}
 
 -- Possible choices of mixing parameters
 -- quantity  : charge, potential, moment_magnitude, moment_direction, noQuantity
