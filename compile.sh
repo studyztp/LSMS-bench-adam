@@ -1,42 +1,39 @@
-#!/bin/bash 
-LSMS_ROOT=$(pwd)
+# grab MPI include flags (prints: -I... -I...)
+MPI_INC="$(mpicxx --showme:compile 2>/dev/null || mpicxx -show 2>/dev/null)"
 
-rm -Rf build
-mkdir build
-cd build
+# pick the actual libomp.so (adjust if yours differs)
+OMP_LIB=/usr/lib/llvm-18/lib/libomp.so
 
-module reset
-
-module load amd/6.4.1 \
-    rocm/6.4.1 \
-    PrgEnv-amd
-
-module load cray-hdf5-parallel
-export ROCM_PATH=/opt/rocm-6.4.1
-
-module list
-
-echo "HDF5_DIR=$HDF5_DIR"
-echo "ROCM_PATH=$ROCM_PATH"
-
-cmake -DCMAKE_TOOLCHAIN_FILE=$PWD/../toolchain/frontier-rocm-hip.cmake \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_C_COMPILER_WORKS=1 \
-    -DCMAKE_CXX_COMPILER_WORKS=1 \
-    -DCMAKE_C_COMPILER_ID=Clang \
-    -DCMAKE_CXX_COMPILER_ID=Clang \
-    -DCMAKE_THREAD_LIBS_INIT="-pthread" \
-    -DCMAKE_USE_PTHREADS_INIT=1 \
-    -DOpenMP_C_FLAGS="-fopenmp" \
+cmake -S . -B build \
+  -DCMAKE_TOOLCHAIN_FILE="$PWD/toolchain/nugget-cuda.cmake" \
+  -DCMAKE_BUILD_TYPE=Release \
+  \
+  # DON'T lie to CMake about compilers; let it detect
+  # (remove your *_COMPILER_WORKS and *_COMPILER_ID hacks)
+  \
+  # help FindMPI (not required, but makes it deterministic)
+  -DMPI_C_COMPILER="$(command -v mpicc)" \
+  -DMPI_CXX_COMPILER="$(command -v mpicxx)" \
+  -DMPI_Fortran_COMPILER="$(command -v mpifort)" \
+  \
+  # clang + OpenMP
+  -DOpenMP_C_FLAGS="-fopenmp" \
+  -DOpenMP_CXX_FLAGS="-fopenmp" \
+  -DOpenMP_omp_LIBRARY="${OMP_LIB}" \
+  \
+  # IMPORTANT: make mpi.h visible when compiling .cu
+  -DCMAKE_CUDA_FLAGS="${MPI_INC}" \
+  \
+  # Make sure to use the openmpi version of hdf5
+  -DHDF5_LIBRARIES="/usr/lib/x86_64-linux-gnu/hdf5/openmpi" \
+  -DHDF5_INCLUDE_DIRS="/usr/include/hdf5/openmpi" \
+  -DHDF5_PREFER_PARALLEL=ON \
+  \
+  # Some Openmp flags
+  -DOpenMP_C_FLAGS="-fopenmp" \
     -DOpenMP_CXX_FLAGS="-fopenmp" \
     -DOpenMP_C_LIB_NAMES="omp" \
     -DOpenMP_CXX_LIB_NAMES="omp" \
-    -DOpenMP_omp_LIBRARY=$ROCM_PATH/llvm/lib/libomp.so \
-    -DHDF5_LIBRARIES=$HDF5_DIR/lib/ \
-    -DHDF5_INCLUDE_DIRS=$HDF5_DIR/include \
-    -DHDF5_C_LIBRARY=$HDF5_DIR/lib/libhdf5.so \
-    -DHDF5_HL_LIBRARY=$HDF5_DIR/lib/libhdf5_hl.so \
-    -DHDF5_PREFER_PARALLEL=ON \
-    ..
+  -DBUILD_NUGGET
 
-gmake -j16
+cmake --build build --parallel
