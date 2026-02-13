@@ -16,11 +16,11 @@ set(MST_BUILD_KKR_MATRIX_DEFAULT 0x3000)
 
 # find
 set(CMAKE_CXX_COMPILER "mpic++")
-set(CMAKE_C_COMPILER "gcc")
-set(CMAKE_Fortran_COMPILER "gfortran")
+set(CMAKE_C_COMPILER "clang")
+set(CMAKE_Fortran_COMPILER "flang-new")
 
 set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_CXX_FLAGS "-O2 -mtune=native")
-set(CMAKE_Fortran_FLAGS "-O2 -mtune=native")
+set(CMAKE_Fortran_FLAGS "-O2")
 # set(CMAKE_OPTIMIZE_DEPENDENCIES TRUE)
 # set(CMAKE_Fortran_PREPROCESS TRUE)

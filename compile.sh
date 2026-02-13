@@ -33,7 +33,6 @@ cmake -S . -B build \
   -DOpenMP_C_FLAGS="-fopenmp" \
     -DOpenMP_CXX_FLAGS="-fopenmp" \
     -DOpenMP_C_LIB_NAMES="omp" \
-    -DOpenMP_CXX_LIB_NAMES="omp" \
-  -DBUILD_NUGGET
+    -DOpenMP_CXX_LIB_NAMES="omp"
 
 cmake --build build --parallel
