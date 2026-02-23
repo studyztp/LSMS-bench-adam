@@ -23,6 +23,7 @@ cmake -S . -B build \
   \
   # IMPORTANT: make mpi.h visible when compiling .cu
   -DCMAKE_CUDA_FLAGS="${MPI_INC}" \
+  -DCMAKE_CUDA_ARCHITECTURES=89 \
   \
   # Make sure to use the openmpi version of hdf5
   -DHDF5_LIBRARIES="/usr/lib/x86_64-linux-gnu/hdf5/openmpi" \
@@ -33,6 +34,9 @@ cmake -S . -B build \
   -DOpenMP_C_FLAGS="-fopenmp" \
     -DOpenMP_CXX_FLAGS="-fopenmp" \
     -DOpenMP_C_LIB_NAMES="omp" \
-    -DOpenMP_CXX_LIB_NAMES="omp"
+    -DOpenMP_CXX_LIB_NAMES="omp" 
+  # \
+  # # Nugget definitions
+  # -DBUILD_NUGGET="ir-bb-label"
 
 cmake --build build --parallel

@@ -322,6 +322,14 @@ target_compile_definitions(lsmscore PUBLIC HAS_BACKTRACE)
 target_include_directories(lsmscore PUBLIC ${CMAKE_SOURCE_DIR}/include)
 
 
+# Apply the Nugget pipeline to the workload
+include(${CMAKE_SOURCE_DIR}/nugget-function.cmake)
+Message(STATUS "Applying the Nugget pipeline to the workload")
+Message(STATUS "lsmscore")
+nugget_target_file_to_IR_planning(lsmscore output_target_lsmscore)
+Message(STATUS "lsms_main:")
+nugget_target_file_to_IR_planning(lsms_main output_target_lsms_main)
+
 #
 # Enable Testing with CTest
 #
