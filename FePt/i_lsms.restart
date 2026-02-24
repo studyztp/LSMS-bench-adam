@@ -23,7 +23,7 @@ ipcore=30
 
 infoEvecFileOut="info_evec_out"
 
-gpu_threads=2
+gpu_threads=1
 num_atoms=2
 relativity="scalar"
 core_relativity="full"
@@ -64,7 +64,7 @@ site[1].Z=26
 site[1].Zc=10
 site[1].Zs=8
 site[1].Zv=8
-site[1].rLIZ=0.100000
+site[1].rLIZ=8.500000
 site[1].rsteps={89.500000,91.500000,93.200000,99.900000}
 site[1].rad=2.000000
 site[2].pos={    2.609000000000000,     2.609000000000000,     3.529000000000000}
@@ -75,6 +75,6 @@ site[2].Z=78
 site[2].Zc=46
 site[2].Zs=22
 site[2].Zv=10
-site[2].rLIZ=0.100000
+site[2].rLIZ=8.500000
 site[2].rsteps={89.500000,91.500000,93.200000,99.900000}
 site[2].rad=2.000000

@@ -713,3 +713,32 @@ function(nugget_create_exe ORIGINAL_TARGET OBJ_TARGET CMD LINK_CMD LINK_DEPS OUT
     set_target_properties(${OUTPUT_TARGET} PROPERTIES NUGGET_EXE_FILE "${_exe_out}")
     set_target_properties(${OUTPUT_TARGET} PROPERTIES NUGGET_TARGET_TYPE "NUGGET_EXE_TARGET")
 endfunction(nugget_create_exe)
+
+function(nugget_merge_bc_files INPUT_TARGET_LIST OUTPUT_TARGET)
+    set(_bc_file_list "")
+    foreach(_target ${INPUT_TARGET_LIST})
+        get_target_property(_target_type ${_target} NUGGET_TARGET_TYPE)
+        if (NOT _target_type) 
+            message(FATAL_ERROR "Nugget: Target '${_target}' has no NUGGET_TARGET_TYPE property")
+        endif()
+
+        get_target_property(_input_bc ${_target} NUGGET_BC_FILE)
+        if(_input_bc)
+            list(APPEND _bc_file_list ${_input_bc})
+        else()
+            message(FATAL_ERROR "Nugget: Target '${_target}' has no NUGGET_BC_FILE property")
+        endif()
+    endforeach()
+    set(_bc_out "${LLVM_BC_OUTPUT_DIR}/${OUTPUT_TARGET}.bc")
+    add_custom_command(
+        OUTPUT "${_bc_out}"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${LLVM_BC_OUTPUT_DIR}"
+        COMMAND ${NUGGET_LLVM_LINK} ${_bc_file_list} -o "${_bc_out}"
+        DEPENDS ${_bc_file_list} ${INPUT_TARGET_LIST}
+        COMMENT "Nugget [llvm-link]: ${OUTPUT_TARGET}.bc"
+        VERBATIM
+    )
+    add_custom_target(${OUTPUT_TARGET} DEPENDS "${_bc_out}")
+    set_target_properties(${OUTPUT_TARGET} PROPERTIES NUGGET_BC_FILE "${_bc_out}")
+    set_target_properties(${OUTPUT_TARGET} PROPERTIES NUGGET_TARGET_TYPE "NUGGET_BC_TARGET")
+endfunction(nugget_merge_bc_files)

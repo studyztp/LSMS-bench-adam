@@ -67,6 +67,13 @@
 #include <nvToolsExt.h>
 #endif
 
+#ifdef USE_NUGGET
+extern "C" {
+  void nugget_roi_begin_();
+  void nugget_roi_end_();
+}
+#endif
+
 
 #if defined(ACCELERATOR_CUBLAS) || defined(ACCELERATOR_LIBSCI) || defined(ACCELERATOR_CUDA_C) || defined(ACCELERATOR_HIP)
 #include "Accelerator/DeviceStorage.hpp"
@@ -116,6 +123,10 @@ int main(int argc, char *argv[])
   Real eband;
 
   auto lsmsStartTime = std::chrono::steady_clock::now();
+
+#ifdef USE_NUGGET
+  nugget_roi_begin_();
+#endif
 
   lua_State *L = luaL_newstate();
   luaL_openlibs(L);
@@ -831,6 +842,10 @@ int main(int argc, char *argv[])
   }
 
   double fomScale = calculateFomScaleDouble(comm, local);
+
+#ifdef USE_NUGGET
+  nugget_roi_end_();
+#endif
 
   auto lsmsEndTime = std::chrono::steady_clock::now();
   std::chrono::duration<double> lsmsRuntime = lsmsEndTime - lsmsStartTime;

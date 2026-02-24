@@ -324,6 +324,7 @@ target_include_directories(lsmscore PUBLIC ${CMAKE_SOURCE_DIR}/include)
 
 # Apply the Nugget pipeline to the workload
 if (USE_NUGGET)
+    target_compile_definitions(lsms_main PRIVATE USE_NUGGET)
     set(NUGGET_PROJECT_SOURCE_DIRS "${CMAKE_SOURCE_DIR}" CACHE STRING "" FORCE)
     include(${NUGGET_FUNCTION_CMAKE})
     if(NUGGET_BUILD_BBID_PASS)
@@ -334,6 +335,13 @@ if (USE_NUGGET)
         nugget_create_link_cmd(lsms_main link_cmd link_dep)
         nugget_create_exe(lsms_main lsms_main-base-obj "-fPIE" "${link_cmd}" "${link_dep}" lsms_main-base-exec)
     endif(NUGGET_BUILD_BBID_PASS)
+    if(NUGGET_BUILD_ANALYSIS_PASS)
+        nugget_merge_bc_files("analysis-hook-bc;lsms_main-base-bc" lsms_main-hooked-bc)
+        nugget_apply_opt(lsms_main-hooked-bc "${NUGGET_BUILD_ANALYSIS_PASS_CMD}" lsms_main-analysis-bc)
+        nugget_create_obj(lsms_main-analysis-bc "-O2" lsms_main-analysis-obj)
+        nugget_create_link_cmd(lsms_main link_cmd link_dep)
+        nugget_create_exe(lsms_main lsms_main-analysis-obj "-fPIE" "${link_cmd}" "${link_dep}" lsms_main-analysis-exec)
+    endif(NUGGET_BUILD_ANALYSIS_PASS)
 endif()
 
 #
