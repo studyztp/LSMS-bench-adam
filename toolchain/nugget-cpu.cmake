@@ -9,10 +9,24 @@ set(BUILD_TESTING OFF)
 set(MST_LINEAR_SOLVER_DEFAULT 0x0005)
 set(MST_BUILD_KKR_MATRIX_DEFAULT 0x1000)
 
-set(CMAKE_CXX_COMPILER "mpic++")
-set(CMAKE_C_COMPILER "gcc")
-set(CMAKE_Fortran_COMPILER "gfortran")
+set(CMAKE_CXX_COMPILER "clang++")
+set(CMAKE_C_COMPILER "clang")
+set(CMAKE_Fortran_COMPILER "flang-new")
+
+# Help CMake find MPI
+set(MPI_CXX_COMPILER "mpicxx")
+set(MPI_C_COMPILER "mpicc")
+set(MPI_Fortran_COMPILER "mpifort")
 
 set(CMAKE_BUILD_TYPE Release)
-set(CMAKE_CXX_FLAGS "-O2 -mtune=native -mcpu=native")
-set(CMAKE_Fortran_FLAGS "-O2 -mtune=native -mcpu=native")
+set(CMAKE_CXX_FLAGS "-O2")
+set(CMAKE_Fortran_FLAGS "-O2")
+
+# OpenMP flags for clang/flang-new
+set(OpenMP_C_FLAGS "-fopenmp")
+set(OpenMP_CXX_FLAGS "-fopenmp")
+set(OpenMP_Fortran_FLAGS "-fopenmp")
+set(OpenMP_C_LIB_NAMES "omp")
+set(OpenMP_CXX_LIB_NAMES "omp")
+set(OpenMP_Fortran_LIB_NAMES "omp")
+set(OpenMP_omp_LIBRARY "/usr/lib/llvm-18/lib/libomp.so" CACHE PATH "libomp path")

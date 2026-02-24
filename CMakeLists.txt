@@ -325,10 +325,7 @@ target_include_directories(lsmscore PUBLIC ${CMAKE_SOURCE_DIR}/include)
 # Apply the Nugget pipeline to the workload
 include(${CMAKE_SOURCE_DIR}/nugget-function.cmake)
 Message(STATUS "Applying the Nugget pipeline to the workload")
-Message(STATUS "lsmscore")
-nugget_target_file_to_IR_planning(lsmscore output_target_lsmscore)
-Message(STATUS "lsms_main:")
-nugget_target_file_to_IR_planning(lsms_main output_target_lsms_main)
+nugget_create_bc_file(lsms_main nugget_lsms_main NUGGET_SKIPPED_TARGETS)
 
 #
 # Enable Testing with CTest
