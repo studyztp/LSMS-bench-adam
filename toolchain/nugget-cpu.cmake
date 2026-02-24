@@ -19,8 +19,10 @@ set(MPI_C_COMPILER "mpicc")
 set(MPI_Fortran_COMPILER "mpifort")
 
 set(CMAKE_BUILD_TYPE Release)
-set(CMAKE_CXX_FLAGS "-O2")
-set(CMAKE_Fortran_FLAGS "-O2")
+set(CMAKE_CXX_FLAGS "")
+set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
+set(CMAKE_Fortran_FLAGS "")
+set(CMAKE_Fortran_FLAGS_RELEASE "-O2 -DNDEBUG")
 
 # OpenMP flags for clang/flang-new
 set(OpenMP_C_FLAGS "-fopenmp")
@@ -30,3 +32,13 @@ set(OpenMP_C_LIB_NAMES "omp")
 set(OpenMP_CXX_LIB_NAMES "omp")
 set(OpenMP_Fortran_LIB_NAMES "omp")
 set(OpenMP_omp_LIBRARY "/usr/lib/llvm-18/lib/libomp.so" CACHE PATH "libomp path")
+
+set(NUGGET_FUNCTION_CMAKE "${CMAKE_CURRENT_LIST_DIR}/../nugget-function.cmake" CACHE PATH
+    "Path to nugget-function.cmake")
+set(USE_NUGGET ON)
+
+set(NUGGET_PASS_LIBRARY "${CMAKE_CURRENT_LIST_DIR}/../../Nugget-LLVM-passes/build/NuggetPasses.so")
+
+set(NUGGET_BUILD_BBID_PASS ON)
+set(NUGGET_BUILD_BBID_PASS_CMD "-load-pass-plugin=${NUGGET_PASS_LIBRARY} -passes=ir-bb-label-pass<output_csv=lsms-ir-bb.csv>")
+set(NUGGET_BUILD_ANALYSIS_PASS ON)

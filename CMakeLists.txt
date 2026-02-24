@@ -323,9 +323,18 @@ target_include_directories(lsmscore PUBLIC ${CMAKE_SOURCE_DIR}/include)
 
 
 # Apply the Nugget pipeline to the workload
-include(${CMAKE_SOURCE_DIR}/nugget-function.cmake)
-Message(STATUS "Applying the Nugget pipeline to the workload")
-nugget_create_bc_file(lsms_main nugget_lsms_main NUGGET_SKIPPED_TARGETS)
+if (USE_NUGGET)
+    set(NUGGET_PROJECT_SOURCE_DIRS "${CMAKE_SOURCE_DIR}" CACHE STRING "" FORCE)
+    include(${NUGGET_FUNCTION_CMAKE})
+    if(NUGGET_BUILD_BBID_PASS)
+        nugget_create_bc_file(lsms_main lsms_main-bc _skipped)
+        nugget_apply_opt(lsms_main-bc "-O2" lsms_main-bc-O2)
+        nugget_apply_opt(lsms_main-bc-O2 "${NUGGET_BUILD_BBID_PASS_CMD}" lsms_main-base-bc)
+        nugget_create_obj(lsms_main-base-bc "-O2" lsms_main-base-obj)
+        nugget_create_link_cmd(lsms_main link_cmd link_dep)
+        nugget_create_exe(lsms_main lsms_main-base-obj "-fPIE" "${link_cmd}" "${link_dep}" lsms_main-base-exec)
+    endif(NUGGET_BUILD_BBID_PASS)
+endif()
 
 #
 # Enable Testing with CTest
