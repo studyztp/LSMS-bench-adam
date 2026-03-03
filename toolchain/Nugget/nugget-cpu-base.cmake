@@ -35,7 +35,12 @@ set(OpenMP_omp_LIBRARY "/usr/lib/llvm-18/lib/libomp.so" CACHE PATH "libomp path"
 
 set(NUGGET_FUNCTION_CMAKE "${CMAKE_CURRENT_LIST_DIR}/../../nugget-function.cmake" CACHE PATH
     "Path to nugget-function.cmake")
+include(${NUGGET_FUNCTION_CMAKE})
 set(USE_NUGGET ON)
+
+set(NUGGET_BASE_HOOK_SOURCE "${CMAKE_CURRENT_LIST_DIR}/hooks/base.c")
+include(${CMAKE_CURRENT_LIST_DIR}/hooks/hooks.cmake)
+nugget_compile_hook_bc("${NUGGET_BASE_HOOK_SOURCE}" base-hook-bc)
 
 set(NUGGET_PASS_LIBRARY "${CMAKE_CURRENT_LIST_DIR}/../../../Nugget-LLVM-passes/build/NuggetPasses.so")
 
