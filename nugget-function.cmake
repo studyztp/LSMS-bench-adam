@@ -742,3 +742,163 @@ function(nugget_merge_bc_files INPUT_TARGET_LIST OUTPUT_TARGET)
     set_target_properties(${OUTPUT_TARGET} PROPERTIES NUGGET_BC_FILE "${_bc_out}")
     set_target_properties(${OUTPUT_TARGET} PROPERTIES NUGGET_TARGET_TYPE "NUGGET_BC_TARGET")
 endfunction(nugget_merge_bc_files)
+
+# Parse a PhaseBoundPass marker CSV file.
+#
+# The CSV header is skipped; lines starting with '#' and blank lines are
+# ignored. Each remaining line is stored verbatim (commas intact) in
+# OUT_ROWS_VAR. Consumers split rows with string(REPLACE "," ";" ...).
+#
+# Usage:
+#   nugget_read_phasebound_markers("${CMAKE_SOURCE_DIR}/phasebound-markers.csv" rows)
+function(nugget_read_phasebound_markers CSV_FILE OUT_ROWS_VAR)
+    if(NOT EXISTS "${CSV_FILE}")
+        message(FATAL_ERROR "Nugget: PhaseBound markers file not found: ${CSV_FILE}")
+    endif()
+    file(STRINGS "${CSV_FILE}" _all_lines)
+    set(_rows)
+    set(_first TRUE)
+    foreach(_line IN LISTS _all_lines)
+        string(STRIP "${_line}" _line)
+        if(_line STREQUAL "" OR _line MATCHES "^#")
+            continue()
+        endif()
+        if(_first)
+            set(_first FALSE)
+            continue()
+        endif()
+        list(APPEND _rows "${_line}")
+    endforeach()
+    set(${OUT_ROWS_VAR} "${_rows}" PARENT_SCOPE)
+endfunction(nugget_read_phasebound_markers)
+
+# Build one PhaseBoundPass-instrumented executable for one marker row.
+#
+# Keyword arguments:
+#   ORIGINAL_TARGET   the original CMake target whose link line is reused (e.g. lsms_main)
+#   HOOK_BC_TARGET    a NUGGET_BC_TARGET providing the runtime hook functions
+#                     (created by nugget_compile_hook_bc)
+#   BASE_BC_TARGET    a NUGGET_BC_TARGET wrapping the labeled+optimized base bitcode
+#                     (e.g. lsms_main-base-bc from the base build)
+#   NUGGET_NAME       hook-kind tag (becomes <name> in lsms_main-nugget-<name>-<id>-exec)
+#   NUGGET_ID         per-row identifier (becomes <id>)
+#   WARMUP_BB_ID WARMUP_COUNT START_BB_ID START_COUNT END_BB_ID END_COUNT
+#   LABEL_ONLY        ON/OFF; ON passes label_only=true to phase-bound-pass
+#   PASS_LIBRARY      absolute path to NuggetPasses.so
+#   OUT_TARGET_VAR    variable name (in parent scope) to receive the exec target name
+function(nugget_create_phasebound_exec)
+    set(_oneval
+        ORIGINAL_TARGET HOOK_BC_TARGET BASE_BC_TARGET
+        NUGGET_NAME NUGGET_ID
+        WARMUP_BB_ID WARMUP_COUNT
+        START_BB_ID START_COUNT
+        END_BB_ID END_COUNT
+        LABEL_ONLY PASS_LIBRARY OUT_TARGET_VAR)
+    set(_multival LINK_CMD LINK_DEPS)
+    cmake_parse_arguments(P "" "${_oneval}" "${_multival}" ${ARGN})
+
+    set(_prefix "${P_ORIGINAL_TARGET}-nugget-${P_NUGGET_NAME}-${P_NUGGET_ID}")
+    if(P_LABEL_ONLY)
+        set(_label_only_str "true")
+    else()
+        set(_label_only_str "false")
+    endif()
+
+    set(_pass_args "phase-bound-pass<warmup_marker_bb_id=${P_WARMUP_BB_ID};warmup_marker_count=${P_WARMUP_COUNT};start_marker_bb_id=${P_START_BB_ID};start_marker_count=${P_START_COUNT};end_marker_bb_id=${P_END_BB_ID};end_marker_count=${P_END_COUNT};label_only=${_label_only_str}>")
+    set(_pass_cmd "-load-pass-plugin=${P_PASS_LIBRARY} -passes='${_pass_args}'")
+
+    set(_merged "${P_ORIGINAL_TARGET}-nugget-${P_NUGGET_NAME}-hooked-bc")
+    if(NOT TARGET ${_merged})
+        nugget_merge_bc_files("${P_HOOK_BC_TARGET};${P_BASE_BC_TARGET}" ${_merged})
+    endif()
+
+    nugget_apply_opt(${_merged} "${_pass_cmd}" ${_prefix}-bc)
+    nugget_create_obj(${_prefix}-bc "-O2" ${_prefix}-obj)
+    nugget_create_exe(${P_ORIGINAL_TARGET} ${_prefix}-obj "-fPIE"
+                      "${P_LINK_CMD}" "${P_LINK_DEPS}" ${_prefix}-exec)
+
+    set(${P_OUT_TARGET_VAR} "${_prefix}-exec" PARENT_SCOPE)
+endfunction(nugget_create_phasebound_exec)
+
+# Read a PhaseBound marker CSV and build one instrumented executable per row.
+# Also creates an aggregate target lsms_main-nugget-<name>-all-exec that
+# depends on every per-row exec, so a single `cmake --build ... --target ...`
+# invocation builds the whole batch.
+#
+# CSV schema (8 columns, header skipped, blanks and '#' comments ignored):
+#   margin,id,warmup_bb_id,warmup_count,start_bb_id,start_count,end_bb_id,end_count
+# The margin column lets one CSV carry rows for several marker-margin sweeps
+# (see nugget-pipeline.py --marker-margins). The margin tag is appended to
+# the per-row NUGGET_ID as "<id>-m<margin>" so each (margin, region) pair
+# produces a uniquely-named binary in the same build dir, no rebuild needed
+# between margins. The merged-bc target uses only NUGGET_NAME, so the hook+
+# base merge runs once and is reused across every row.
+#
+# Keyword arguments are the same as nugget_create_phasebound_exec, minus
+# NUGGET_ID and per-row marker fields (which come from the CSV), plus:
+#   CSV_FILE   path to the markers CSV
+function(nugget_create_phasebound_execs_from_csv)
+    set(_oneval
+        ORIGINAL_TARGET HOOK_BC_TARGET BASE_BC_TARGET
+        NUGGET_NAME LABEL_ONLY PASS_LIBRARY CSV_FILE)
+    cmake_parse_arguments(P "" "${_oneval}" "" ${ARGN})
+
+    nugget_read_phasebound_markers("${P_CSV_FILE}" _rows)
+    if(NOT _rows)
+        message(WARNING "Nugget: PhaseBound markers file has no data rows: ${P_CSV_FILE}")
+        return()
+    endif()
+
+    # Compute the original target's link line ONCE. nugget_create_link_cmd
+    # uses file(GENERATE) with a path keyed only by ORIGINAL_TARGET, so calling
+    # it per-row produces duplicate generated-file commands and cmake errors.
+    nugget_create_link_cmd(${P_ORIGINAL_TARGET} _shared_link_cmd _shared_link_deps)
+
+    set(_all_execs)
+    foreach(_row IN LISTS _rows)
+        string(REPLACE "," ";" _fields "${_row}")
+        list(LENGTH _fields _nfields)
+        if(NOT _nfields EQUAL 8)
+            message(FATAL_ERROR
+                "Nugget: PhaseBound markers row has ${_nfields} fields (expected 8: margin,id,warmup_bb_id,warmup_count,start_bb_id,start_count,end_bb_id,end_count): ${_row}")
+        endif()
+        list(GET _fields 0 _margin)
+        list(GET _fields 1 _id)
+        list(GET _fields 2 _w_bb)
+        list(GET _fields 3 _w_n)
+        list(GET _fields 4 _s_bb)
+        list(GET _fields 5 _s_n)
+        list(GET _fields 6 _e_bb)
+        list(GET _fields 7 _e_n)
+
+        # Append the margin tag to the row id so (margin, region) pairs map
+        # to distinct binary names. Margin=100 also gets a tag so naming is
+        # uniform across the whole sweep and the driver's discovery regex
+        # doesn't need a special case.
+        set(_full_id "${_id}-m${_margin}")
+
+        nugget_create_phasebound_exec(
+            ORIGINAL_TARGET ${P_ORIGINAL_TARGET}
+            HOOK_BC_TARGET  ${P_HOOK_BC_TARGET}
+            BASE_BC_TARGET  ${P_BASE_BC_TARGET}
+            NUGGET_NAME     ${P_NUGGET_NAME}
+            NUGGET_ID       ${_full_id}
+            WARMUP_BB_ID    ${_w_bb}
+            WARMUP_COUNT    ${_w_n}
+            START_BB_ID     ${_s_bb}
+            START_COUNT     ${_s_n}
+            END_BB_ID       ${_e_bb}
+            END_COUNT       ${_e_n}
+            LABEL_ONLY      ${P_LABEL_ONLY}
+            PASS_LIBRARY    ${P_PASS_LIBRARY}
+            LINK_CMD        ${_shared_link_cmd}
+            LINK_DEPS       ${_shared_link_deps}
+            OUT_TARGET_VAR  _exec_target)
+        list(APPEND _all_execs ${_exec_target})
+    endforeach()
+
+    set(_agg "${P_ORIGINAL_TARGET}-nugget-${P_NUGGET_NAME}-all-exec")
+    if(NOT TARGET ${_agg})
+        add_custom_target(${_agg} DEPENDS ${_all_execs})
+    endif()
+endfunction(nugget_create_phasebound_execs_from_csv)
