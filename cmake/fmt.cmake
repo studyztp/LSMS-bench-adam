@@ -12,7 +12,7 @@ set(FMT_TEST OFF CACHE BOOL "" FORCE)
 include(FetchContent)
 FetchContent_Declare(fmt
         GIT_REPOSITORY https://github.com/fmtlib/fmt.git
-        GIT_TAG master
+        GIT_TAG 11.0.2
         UPDATE_DISCONNECTED ON
         )
 FetchContent_MakeAvailable(fmt)
