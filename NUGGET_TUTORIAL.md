@@ -33,15 +33,26 @@ LSMS-bench-adam/
 ├── CMakeLists.txt
 ├── nugget-function.cmake
 ├── toolchain/Nugget/             # .cmake toolchains + hook .c files
+├── FePt/                         # canonical workload (auto-seeds experiment/FePt/)
 ├── build-base/                   # base bc + lsms-ir-bb.csv (stage 1 only)
 ├── build-cpu-exec/               # shared: analysis + phasebound + base-measure
 └── experiment/
-    ├── FePt/                     # workload (default; --workload <dir>)
+    ├── FePt/                     # working copy (auto-seeded on first run)
     │   ├── i_lsms_express_gpu    # input
     │   └── analysis-output.csv   # emitted by the analysis run
     ├── data/                     # every CSV pipeline result
     └── nugget-pipeline-logs/     # per-trial stdout+stderr
 ```
+
+The driver auto-creates `experiment/data/` and `experiment/nugget-pipeline-logs/`
+on first use. The workload directory (`experiment/FePt/` by default) is
+**auto-seeded from a same-named directory at the repo root**: on the first
+stage that needs the workload, if `experiment/FePt/` is missing the driver
+runs `shutil.copytree(FePt, experiment/FePt)` and prints a one-line notice.
+Subsequent runs reuse the copy in place. This keeps the canonical workload
+at the repo root (the historical layout) while every pipeline artefact lives
+under `experiment/`. If neither location exists, the driver bails with a
+clear message.
 
 `build-base/` is dedicated to stage 1. `build-cpu-exec/` is shared by stages
 2/4/5 — each one reconfigures with its own toolchain via `cmake --fresh`,
@@ -75,8 +86,10 @@ missing.
 `opt`, `llc`.
 - MPI (`mpicxx`, `mpifort`), an OpenMP runtime (`libomp.so`),
 `taskset` (from `util-linux`), and `python3 >= 3.10`.
-- A workload directory under `experiment/` with the expected input files.
-Default workload: `experiment/FePt/` containing `i_lsms_express_gpu`.
+- A workload directory either at the repo root (e.g. `FePt/`) or under
+`experiment/` (e.g. `experiment/FePt/`). Default workload:
+`experiment/FePt/` containing `i_lsms_express_gpu`. If only the root copy
+exists, the driver seeds `experiment/<name>/` from it on first use.
 - The application source already wraps its region-of-interest in
 `nugget_roi_begin_()` / `nugget_roi_end_()` calls — Nugget hooks override
 these symbols at link time, so the application doesn't need to know any
@@ -506,7 +519,10 @@ python3 nugget-pipeline.py --workload experiment/<dir> --input <input-file>
 ```
 
 The workload directory should sit under `experiment/` so all run-time
-artefacts stay inside that subtree.
+artefacts stay inside that subtree. You can either put it there directly,
+or place it at the repo root with the same basename (`<dir>/`) — the
+driver will seed `experiment/<dir>/` from the root copy on first run
+(see [Directory layout](#directory-layout)).
 
 ### Adapting to a different application
 

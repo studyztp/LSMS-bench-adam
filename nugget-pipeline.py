@@ -102,6 +102,40 @@ _TIME_RE = re.compile(r"Time taken:\s*(\d+)\s*ns")
 _NUGGET_ID_RE = re.compile(r"^(?P<region>.+)-m(?P<margin>\d+)$")
 
 
+def resolve_workload_dir(rel_path: str) -> Path:
+    """Resolve --workload to an absolute path, seeding it from a same-named
+    directory at the repo root if the destination is missing.
+
+    Example: --workload experiment/FePt with experiment/FePt/ absent will
+    `shutil.copytree(<root>/FePt, <root>/experiment/FePt)`. This lets the
+    user keep the canonical workload at the repo root (the historical
+    layout) while the pipeline writes everything else under experiment/.
+    The first run materialises experiment/<name>/; subsequent runs reuse
+    it without recopying.
+
+    Bails with a clear message if neither the destination nor the source
+    candidate exists -- the user has to put the workload somewhere.
+    """
+    workdir = (PROJECT_ROOT / rel_path).resolve()
+    if workdir.is_dir():
+        return workdir
+    # Source candidate: same-named directory at the repo root. The
+    # `src.resolve() != workdir` guard handles `--workload FePt`, where
+    # source == destination and there's nothing to copy.
+    src = (PROJECT_ROOT / workdir.name).resolve()
+    if src.is_dir() and src != workdir:
+        print(f"  workload {workdir.relative_to(PROJECT_ROOT)} "
+              f"not found; seeding from {src.relative_to(PROJECT_ROOT)}/")
+        workdir.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(src, workdir)
+        return workdir
+    sys.exit(
+        f"workload dir does not exist: {workdir}\n"
+        f"  hint: place the workload there, or create {src} so the "
+        f"pipeline can seed it automatically."
+    )
+
+
 def parse_nugget_id(full_id: str) -> tuple:
     """Split a discovered nugget id ('region_07-m99') into ('region_07', 99).
     Returns (full_id, 0) if the trailing '-m<N>' tag is absent -- defensive
@@ -499,9 +533,7 @@ def stage_analysis(args) -> None:
     cmake_build(BUILD_CPU_EXEC, "lsms_main-analysis-exec")
 
     binary = (BUILD_CPU_EXEC / "llvm-exec" / "lsms_main-analysis-exec").resolve()
-    workdir = (PROJECT_ROOT / args.workload).resolve()
-    if not workdir.is_dir():
-        sys.exit(f"workload dir does not exist: {workdir}")
+    workdir = resolve_workload_dir(args.workload)
 
     # The phase-bound and baseline hooks write result.txt at end-marker /
     # roi_end time. If we don't clean it before this run, a later stage
@@ -537,7 +569,7 @@ def stage_markers(args) -> None:
     is pure data processing, runs in a fraction of a second.
     """
     print("\n=== Stage 3: generate phasebound-markers.csv ===")
-    workdir = (PROJECT_ROOT / args.workload).resolve()
+    workdir = resolve_workload_dir(args.workload)
     analysis = workdir / "analysis-output.csv"
     ir_bb = BUILD_BASE / "lsms-ir-bb.csv"
     require_file(analysis, "Run --stage analysis first.")
@@ -818,9 +850,7 @@ def stage_phasebound(args) -> None:
             )
         binaries = [(nid, b) for nid, b in binaries if _matches(nid)]
 
-    workdir = (PROJECT_ROOT / args.workload).resolve()
-    if not workdir.is_dir():
-        sys.exit(f"workload dir does not exist: {workdir}")
+    workdir = resolve_workload_dir(args.workload)
 
     log_dir = LOGS_ROOT / "phasebound"
     log_dir.mkdir(parents=True, exist_ok=True)
@@ -879,9 +909,7 @@ def stage_baseline(args) -> None:
     cmake_build(BUILD_CPU_EXEC, "lsms_main-base-measure-exec")
 
     binary = (BUILD_CPU_EXEC / "llvm-exec" / "lsms_main-base-measure-exec").resolve()
-    workdir = (PROJECT_ROOT / args.workload).resolve()
-    if not workdir.is_dir():
-        sys.exit(f"workload dir does not exist: {workdir}")
+    workdir = resolve_workload_dir(args.workload)
 
     log_dir = LOGS_ROOT / "baseline"
     log_dir.mkdir(parents=True, exist_ok=True)
