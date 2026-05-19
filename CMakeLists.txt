@@ -343,6 +343,22 @@ if (USE_NUGGET)
         nugget_create_link_cmd(lsms_main link_cmd link_dep)
         nugget_create_exe(lsms_main lsms_main-analysis-obj "-fPIE" "${link_cmd}" "${link_dep}" lsms_main-analysis-exec)
     endif(NUGGET_BUILD_ANALYSIS_PASS)
+    if(NUGGET_BUILD_BASE_MEASURE)
+        nugget_merge_bc_files("base-measure-hook-bc;lsms_main-base-bc" lsms_main-base-measure-hooked-bc)
+        nugget_create_obj(lsms_main-base-measure-hooked-bc "-O2" lsms_main-base-measure-obj)
+        nugget_create_link_cmd(lsms_main link_cmd link_dep)
+        nugget_create_exe(lsms_main lsms_main-base-measure-obj "-fPIE" "${link_cmd}" "${link_dep}" lsms_main-base-measure-exec)
+    endif(NUGGET_BUILD_BASE_MEASURE)
+    if(NUGGET_BUILD_BOUND_PASS)
+        nugget_create_phasebound_execs_from_csv(
+            ORIGINAL_TARGET lsms_main
+            HOOK_BC_TARGET  phasebound-hook-bc
+            BASE_BC_TARGET  lsms_main-base-bc
+            NUGGET_NAME     "${NUGGET_PHASEBOUND_HOOK_NAME}"
+            LABEL_ONLY      "${NUGGET_PHASEBOUND_LABEL_ONLY}"
+            PASS_LIBRARY    "${NUGGET_PASS_LIBRARY}"
+            CSV_FILE        "${NUGGET_PHASEBOUND_MARKERS_FILE}")
+    endif(NUGGET_BUILD_BOUND_PASS)
 endif()
 
 #

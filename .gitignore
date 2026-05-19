@@ -299,7 +299,15 @@ FePt/*.csv
 FePt/*.sh
 FePt/sim_*.txt
 experiments
+
+# Nugget pipeline build trees and regenerable run artefacts.
+# CSVs under experiment/data/ are reproducible by re-running the pipeline;
+# nugget-pipeline-logs/ accumulates 300MB+ of per-trial stdout/stderr.
 build/
+build-base/
+build-cpu-exec/
+experiment/data/
+experiment/nugget-pipeline-logs/
 develop-eggs/
 dist/
 downloads/
